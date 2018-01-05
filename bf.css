@@ -1,0 +1,16 @@
+form span {
+  display: inline-block;
+  width: 100px;
+}
+
+input[type="text"] {
+  width: 80px;
+}
+
+input[type="submit"] {
+  width: 180px;
+}
+
+.error {
+  color: red;
+}
