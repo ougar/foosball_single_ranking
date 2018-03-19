@@ -71,10 +71,60 @@ print("</html>\n");
 
 function listmatches() {
   $dbh=Database::get_handle();
+  $table=$dbh->kquery("select player, count(*) as kampe, sum(win) as win, sum(win=0) as lose, percent(sum(win)/count(*),1) as winpct from vsingle group by player order by winpct desc");
+  $matchvs_player=$dbh->get_single_column("select distinct player from vsingle order by player");
+  $matchvs=$dbh->kquery("select player, opponent, count(*) as kampe,sum(win) as win,sum(win=0) as lose, percent(sum(win)/count(*),1) as winpct from vsingle group by player,opponent order by player, opponent");
   $matchlist=$dbh->kquery("select *,time_format(time,'%H:%i') as stime from single where !deleted order by date desc, time desc");
+
+  $versus=array();
+  foreach ($matchvs_player as $m) $versus[$m]=array();
+  while ($s = $matchvs->fetch_assoc())
+    $versus[$s['player']][$s['opponent']]=$s;
 
   print("<p> <a href='?new=1'> Indtast ny kamp </a>\n");
 
+  # Add span around all player names and implode to use in table header
+  $playerheader=implode(" <th> ",array_map(create_function('$a','return("<div><span>".$a."</span></div>");'),$matchvs_player));
+  print("\n");
+  print("<h3> Stilling totalt </h3>\n");
+  print("<table>\n".
+        "  <thead>\n".
+        "    <tr><th> # <th> Spiller <th> Kampe <th> Vundet <th> Tabt <th> Sejrsrate\n".
+        "  </thead>\n".
+        "  <tbody>\n");
+  $i=0;
+  while ($t = $table->fetch_assoc()) {
+    $i++;
+    printf("    <tr> <td> %2d <td> %-12s <td> %2d <td> %2d <td> %2d <td> %s\n",
+      $i,$t["player"],$t["kampe"],$t["win"],$t["lose"],$t["winpct"]);
+  }
+  print("  </tbody>\n".
+        "</table>\n");
+  
+  print("\n<br>\n\n");
+
+  print("<h3> Indbyrdes stilling </h3>\n");
+  print("<table id='tablevs'>\n".
+        "  <thead>\n".
+        "    <tr> <td> <th> $playerheader\n");
+  print("  </thead>\n");
+  foreach ($matchvs_player as $p) {
+    printf("  <tr> <th> %-10s ",$p);
+    foreach ($matchvs_player as $opp) {
+      if ($opp == $p) $f="";
+      else {
+        $data=$versus[$p][$opp];
+        $f=sprintf("%2d/%-2d (%s)",$data["win"],$data["kampe"],trim($data["winpct"]));
+      }
+      printf(" <td> %-16s ",$f);
+    }
+    print("\n");
+  }
+  print("</table>\n");
+
+  print("\n<br>\n\n");
+
+  print("<h3> Kampoversigt </h3>\n");
   print("<table>\n".
         "  <thead>\n".
         "    <tr> <th> # <th> Dato <th> Tid <th> Bord <th> Vinder <th> Taber <th colspan='3'> Resultat".
